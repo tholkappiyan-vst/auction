@@ -1,10 +1,8 @@
 package com.example.aution.service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -143,7 +141,7 @@ public class AuctionService {
     }
 
     // ── Get My Auctions ───────────────────────────────────────────────────────
-
+    @Transactional(readOnly = true)
     public List<AuctionResponse> getMyAuctions(String username) {
         AuctionerEntity auctioner = auctionerRepository
                 .findByPersonDetailsUsername(username)
@@ -157,7 +155,7 @@ public class AuctionService {
     }
 
     // ── Get Single Auction (public) ───────────────────────────────────────────
-
+    @Transactional(readOnly = true)
     public AuctionResponse getAuction(Long auctionId) {
         return auctionRepository.findById(auctionId)
                 .map(this::toResponse)
@@ -165,7 +163,7 @@ public class AuctionService {
     }
 
     // ── Get All Public Auctions (SCHEDULED + ACTIVE) ──────────────────────────
-
+    @Transactional(readOnly = true)
     public List<AuctionResponse> getPublicAuctions() {
         return auctionRepository
                 .findByStatusIn(List.of(AuctionStatus.SCHEDULED, AuctionStatus.ACTIVE))

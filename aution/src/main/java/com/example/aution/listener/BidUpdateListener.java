@@ -26,7 +26,7 @@ import java.time.LocalDateTime;
  * auction transitions to ACTIVE (done in AuctionSchedulerService).
  */
 @Slf4j
-@Component
+
 @RequiredArgsConstructor
 public class BidUpdateListener implements MessageListener {
 

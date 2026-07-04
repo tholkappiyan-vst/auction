@@ -2,12 +2,16 @@ package com.example.aution.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scripting.support.StaticScriptSource;
+
+import com.example.aution.listener.BidUpdateListener;
 
 /**
  * RedisConfig wires up three things:
@@ -118,5 +122,10 @@ public class RedisConfig {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         return container;
+    }
+    @Bean
+    @Scope("prototype")
+    public BidUpdateListener bidUpdateListener(SimpMessagingTemplate messagingTemplate) {
+    return new BidUpdateListener(messagingTemplate);
     }
 }

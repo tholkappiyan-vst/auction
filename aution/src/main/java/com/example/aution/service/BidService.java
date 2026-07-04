@@ -1,5 +1,17 @@
 package com.example.aution.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.listener.ChannelTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
 import com.example.aution.dto.bid.BidRequest;
 import com.example.aution.dto.bid.BidResponse;
 import com.example.aution.dto.bid.BidUpdateMessage;
@@ -10,19 +22,9 @@ import com.example.aution.listener.BidUpdateListener;
 import com.example.aution.repository.AuctionRegistrationRepository;
 import com.example.aution.repository.AuctionRepository;
 import com.example.aution.repository.BidderRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationContext;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
-import org.springframework.data.redis.listener.ChannelTopic;
-import org.springframework.data.redis.listener.RedisMessageListenerContainer;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * BidService handles:
@@ -42,7 +44,7 @@ public class BidService {
     private final BidderRepository bidderRepository;
     private final AuctionRegistrationRepository registrationRepository;
     private final RedisMessageListenerContainer listenerContainer;
-    private final ApplicationContext applicationContext; // to get fresh BidUpdateListener beans
+   private final SimpMessagingTemplate messagingTemplate;
 
     // ── Redis key helpers ────────────────────────────────────────────────────
 
@@ -130,27 +132,27 @@ public class BidService {
      *
      * Keys have no TTL — they are cleaned up by completeAuction().
      */
-    public void seedAuction(AuctionDetailsEntity auction) {
-        Long id = auction.getId();
+   public void seedAuction(AuctionDetailsEntity auction) {
+    Long id = auction.getId();
 
-        redisTemplate.opsForValue().set(keyStatus(id), "ACTIVE");
-        redisTemplate.opsForValue().set(
-                keyHighestBid(id),
-                auction.getStartingPrice().toPlainString());
-        redisTemplate.opsForValue().set(keyLeader(id), "");
-        redisTemplate.opsForValue().set(
-                keyIncrement(id),
-                auction.getMinimumIncrement().toPlainString());
+    redisTemplate.opsForValue().set(keyStatus(id), "ACTIVE");
+    redisTemplate.opsForValue().set(
+            keyHighestBid(id),
+            auction.getStartingPrice().toPlainString());
+    redisTemplate.opsForValue().set(keyLeader(id), "");
+    redisTemplate.opsForValue().set(
+            keyIncrement(id),
+            auction.getMinimumIncrement().toPlainString());
 
-        // Register Pub/Sub listener for this auction's channel
-        BidUpdateListener listener = applicationContext.getBean(BidUpdateListener.class);
-        listener.setAuctionId(id);
-        listenerContainer.addMessageListener(
-                listener,
-                new ChannelTopic(keyPubSub(id)));
+    // ← Fix: create fresh instance directly
+    BidUpdateListener listener = new BidUpdateListener(messagingTemplate);
+    listener.setAuctionId(id);
+    listenerContainer.addMessageListener(
+            listener,
+            new ChannelTopic(keyPubSub(id)));
 
-        log.info("Auction [id={}] seeded in Redis and listener registered", id);
-    }
+    log.info("Auction [id={}] seeded in Redis and listener registered", id);
+}
 
     // ── Complete auction in Redis (called when auction ends) ─────────────────
 

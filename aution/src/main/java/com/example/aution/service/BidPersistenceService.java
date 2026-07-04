@@ -1,16 +1,5 @@
 package com.example.aution.service;
 
-import com.example.aution.entity.*;
-import com.example.aution.repository.AuctionRepository;
-import com.example.aution.repository.BidHistoryRepository;
-import com.example.aution.repository.BidderRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -18,24 +7,21 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * BidPersistenceService drains the Redis write-behind queue into PostgreSQL.
- *
- * Why write-behind?
- * During peak bidding (last 30 seconds of an auction), thousands of bids
- * can arrive per second. Writing each one directly to PostgreSQL would:
- *  - Create row-level lock contention
- *  - Spike DB CPU and connection pool
- *  - Potentially crash the DB under load
- *
- * Instead, the Lua script pushes each validated bid to a Redis List (a queue).
- * This job drains that queue every 5 seconds in a single batch transaction.
- * PostgreSQL sees a steady batch write instead of a spike.
- *
- * The trade-off: bids appear in PostgreSQL up to 5 seconds after placement.
- * This is acceptable because Redis is the source of truth during the auction.
- * PostgreSQL is for analytics, auditing, and winner resolution after completion.
- */
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.example.aution.entity.AuctionDetailsEntity;
+import com.example.aution.entity.AuctionStatus;
+import com.example.aution.entity.BidHistoryEntity;
+import com.example.aution.repository.AuctionRepository;
+import com.example.aution.repository.BidHistoryRepository;
+import com.example.aution.repository.BidderRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -45,21 +31,15 @@ public class BidPersistenceService {
     private final BidHistoryRepository bidHistoryRepository;
     private final AuctionRepository auctionRepository;
     private final BidderRepository bidderRepository;
+    private final EmailService emailService; // ← injected for notifications
 
-    private static final int DRAIN_BATCH_SIZE = 100; // max bids per drain cycle
+    private static final int DRAIN_BATCH_SIZE = 100;
 
-    /**
-     * Runs every 5 seconds.
-     * Pops up to DRAIN_BATCH_SIZE entries from every active auction's bid queue
-     * and writes them to BidHistoryEntity in a single transaction.
-     *
-     * Queue entry format: "bidAmount:bidderUsername:timestampMillis"
-     * e.g. "5500.00:ravi123:1719398400000"
-     */
+    // ── Periodic drain (every 5 seconds) ─────────────────────────────────────
+
     @Scheduled(fixedDelay = 5000)
     @Transactional
     public void drainBidQueues() {
-        // Find all ACTIVE auctions from DB to know which queues exist
         List<AuctionDetailsEntity> activeAuctions = auctionRepository
                 .findByStatusAndStartTimeBefore(AuctionStatus.ACTIVE,
                         LocalDateTime.now().plusYears(1));
@@ -71,11 +51,9 @@ public class BidPersistenceService {
         for (AuctionDetailsEntity auction : activeAuctions) {
             String queueKey = BidService.keyQueue(auction.getId());
 
-            // RPOP drains from the tail (oldest entries first — FIFO order)
             for (int i = 0; i < DRAIN_BATCH_SIZE; i++) {
                 String entry = redisTemplate.opsForList().rightPop(queueKey);
-                if (entry == null) break; // queue empty for this auction
-
+                if (entry == null) break;
                 BidHistoryEntity bidRecord = parseBidEntry(entry, auction);
                 if (bidRecord != null) batch.add(bidRecord);
             }
@@ -87,17 +65,13 @@ public class BidPersistenceService {
         }
     }
 
-    /**
-     * Final drain after auction completes — empties remaining queue entries
-     * and sets the winning bidder on AuctionDetailsEntity.
-     *
-     * Called by AuctionSchedulerService after flipping status to COMPLETED.
-     */
+    // ── Final drain after auction completes ───────────────────────────────────
+
     @Transactional
     public void finalDrain(AuctionDetailsEntity auction) {
-        String queueKey = BidService.keyQueue(auction.getId());
+        String queueKey    = BidService.keyQueue(auction.getId());
         String highestBidKey = BidService.keyHighestBid(auction.getId());
-        String leaderKey = BidService.keyLeader(auction.getId());
+        String leaderKey   = BidService.keyLeader(auction.getId());
 
         // Drain remaining bids
         List<BidHistoryEntity> remaining = new ArrayList<>();
@@ -108,24 +82,37 @@ public class BidPersistenceService {
         }
         if (!remaining.isEmpty()) bidHistoryRepository.saveAll(remaining);
 
-        // Set winning bidder on the auction
+        // Resolve winner
         String winnerUsername = redisTemplate.opsForValue().get(leaderKey);
-        String highestBid = redisTemplate.opsForValue().get(highestBidKey);
+        String highestBid     = redisTemplate.opsForValue().get(highestBidKey);
 
         if (winnerUsername != null && !winnerUsername.isEmpty()) {
+            // ── Winner exists ─────────────────────────────────────────────────
             bidderRepository.findByPersonDetailsUsername(winnerUsername).ifPresent(winner -> {
+                BigDecimal winningBid = new BigDecimal(highestBid);
+
                 auction.setWinningBidder(winner);
-                auction.setCurrentHighestBid(new BigDecimal(highestBid));
+                auction.setCurrentHighestBid(winningBid);
                 auction.setFinalizedAt(LocalDateTime.now());
                 auctionRepository.save(auction);
+
                 log.info("Auction [id={}] won by [{}] at ₹{}",
                         auction.getId(), winnerUsername, highestBid);
+
+                // Send emails — @Async so they don't block finalization
+                emailService.sendWinnerDetailsToAuctioneer(auction, winner, winningBid);
+                emailService.sendAuctioneerDetailsToWinner(auction, winner, winningBid);
             });
+
         } else {
-            // No bids placed — reserve not met
+            // ── No bids placed ────────────────────────────────────────────────
             auction.setFinalizedAt(LocalDateTime.now());
             auctionRepository.save(auction);
+
             log.info("Auction [id={}] completed with no bids", auction.getId());
+
+            // Send no-participant email to auctioneer
+            emailService.sendNoParticipantEmail(auction);
         }
 
         // Clean up Redis keys
@@ -152,9 +139,9 @@ public class BidPersistenceService {
                 return null;
             }
 
-            BigDecimal amount = new BigDecimal(parts[0]);
-            String username = parts[1];
-            long timestamp = Long.parseLong(parts[2]);
+            BigDecimal amount  = new BigDecimal(parts[0]);
+            String username    = parts[1];
+            long timestamp     = Long.parseLong(parts[2]);
 
             LocalDateTime placedAt = LocalDateTime.ofInstant(
                     Instant.ofEpochMilli(timestamp), ZoneId.systemDefault());

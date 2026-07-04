@@ -1,19 +1,31 @@
 package com.example.aution.service;
 
-import com.example.aution.dto.auction.AuctionResponse;
-import com.example.aution.dto.bidder.AuctionRegistrationResponse;
-import com.example.aution.entity.*;
-import com.example.aution.exception.*;
-import com.example.aution.repository.*;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.example.aution.dto.auction.AuctionResponse;
+import com.example.aution.dto.bidder.AuctionRegistrationResponse;
+import com.example.aution.entity.AuctionDetailsEntity;
+import com.example.aution.entity.AuctionRegistrationEntity;
+import com.example.aution.entity.AuctionStatus;
+import com.example.aution.entity.AuctionerEntity;
+import com.example.aution.entity.BidderEntity;
+import com.example.aution.entity.ItemDetailsEntity;
+import com.example.aution.exception.AlreadyRegisteredException;
+import com.example.aution.exception.AuctionNotFoundException;
+import com.example.aution.exception.AuctionRegistrationNotAllowedException;
+import com.example.aution.exception.RegistrationNotFoundException;
+import com.example.aution.repository.AuctionRegistrationRepository;
+import com.example.aution.repository.AuctionRepository;
+import com.example.aution.repository.BidderRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -30,6 +42,7 @@ public class BidderService {
      * Reuses AuctionRepository — returns SCHEDULED and ACTIVE auctions.
      * Public endpoint but bidder can also call this while logged in.
      */
+    @Transactional(readOnly = true)  
     public List<AuctionResponse> getAllAvailableAuctions() {
         return auctionRepository
                 .findByStatusIn(List.of(AuctionStatus.SCHEDULED, AuctionStatus.ACTIVE))
@@ -39,7 +52,7 @@ public class BidderService {
     }
 
     // ── 2. View item details of a particular auction ──────────────────────────
-
+    @Transactional(readOnly = true)  
     public AuctionResponse getAuctionDetails(Long auctionId) {
         AuctionDetailsEntity auction = auctionRepository.findById(auctionId)
                 .orElseThrow(() -> new AuctionNotFoundException(auctionId));
@@ -137,7 +150,7 @@ public class BidderService {
     }
 
     // ── 5. View my registered auctions ───────────────────────────────────────
-
+    @Transactional(readOnly = true)  
     public List<AuctionRegistrationResponse> getMyRegistrations(String username) {
         BidderEntity bidder = resolveBidder(username);
 
