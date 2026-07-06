@@ -56,6 +56,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
 
                   // OpenAPI / Swagger UI (useful during development)
+
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
                     "/v3/api-docs/**",
                     "/swagger-ui/**",
