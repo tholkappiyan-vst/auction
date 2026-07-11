@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
+
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
@@ -52,7 +54,7 @@ public class CreateAuctionRequest {
     private Double widthCm;
     private Double heightCm;
     private Double depthCm;
-
+    
     private boolean certifiedAuthentic;
     private String certificateNumber;
     private String provenance;           // Ownership history for high-value items

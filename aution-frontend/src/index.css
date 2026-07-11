@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-ink: #17150F;
+  --color-ink-soft: #221F19;
+  --color-paper: #EDE7DA;
+  --color-paper-dim: #C9C2B0;
+  --color-brass: #B8873B;
+  --color-brass-bright: #D8A84E;
+  --color-ledger: #2F6F5E;
+  --color-ledger-bright: #47987F;
+  --color-auction-red: #9A3324;
+  --color-line: #3A362F;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-brass);
+  color: var(--color-ink);
+}
+
+/* torn ticket-stub notch used on lot cards */
+.lot-stub::before,
+.lot-stub::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  background: var(--color-ink);
+  border-radius: 999px;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+.lot-stub::before { left: -8px; }
+.lot-stub::after { right: -8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-brass-bright);
+  outline-offset: 2px;
+}
+
+@layer components {
+  .input {
+    @apply bg-ink-soft border border-line rounded px-3 py-2 text-paper font-body text-sm
+           focus:outline-none focus:border-brass-bright transition-colors;
+  }
+  .btn-primary {
+    @apply bg-brass text-ink font-body font-medium text-sm px-4 py-2.5 rounded
+           hover:bg-brass-bright transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply border border-line text-paper-dim font-body text-sm px-4 py-2.5 rounded
+           hover:text-paper hover:border-paper-dim transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+}

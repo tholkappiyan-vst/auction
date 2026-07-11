@@ -58,10 +58,12 @@ public class ItemDetailsEntity {
     private String condition;   // "NEW", "MINT", "USED_GOOD", "REFURBISHED"
 
     // --- Media Assets ---
+    @Column(length = 1000)
     private String imageUrl;    // Primary display image
 
     @ElementCollection
     @CollectionTable(name = "item_images", joinColumns = @JoinColumn(name = "item_id"))
+    
     @Column(name = "image_url")
     private List<String> secondaryImageUrls;
 
@@ -72,6 +74,7 @@ public class ItemDetailsEntity {
     private Double depthCm;
 
     // --- Authenticity & Security ---
+   
     private boolean isCertifiedAuthentic;
     private String certificateNumber;  // Verification ID from 3rd-party grading agency
 
