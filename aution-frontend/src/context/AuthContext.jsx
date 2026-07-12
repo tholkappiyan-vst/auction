@@ -5,13 +5,21 @@ import * as authApi from "../api/auth";
 
 const AuthContext = createContext(null);
 
+function normalizeRole(role) {
+  // Backend authorities come through as "ROLE_ADMIN" / "ROLE_AUCTIONEER" / "ROLE_BIDDER".
+  // Strip the Spring Security "ROLE_" prefix so the rest of the app can compare
+  // against plain "ADMIN" / "AUCTIONEER" / "BIDDER" everywhere, consistently.
+  if (!role) return role;
+  return role.startsWith("ROLE_") ? role.slice(5) : role;
+}
+
 function decodeUser(token) {
   if (!token) return null;
   try {
     const payload = jwtDecode(token);
     return {
       username: payload.sub,
-      role: payload.role,
+      role: normalizeRole(payload.role),
       userId: payload.userId,
       exp: payload.exp,
     };

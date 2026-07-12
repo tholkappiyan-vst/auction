@@ -5,6 +5,7 @@ import { getAuction } from "../api/auctions";
 import { getCurrentBidState, placeBid } from "../api/bids";
 import { registerForAuction, unregisterFromAuction, getMyRegistrations } from "../api/bidder";
 import { useAuctionSocket } from "../hooks/useAuctionSocket";
+// 1. Hook imported at the top (already present)
 import { useCountdown } from "../hooks/useCountdown";
 import StatusBadge from "../components/StatusBadge";
 import { formatCurrency, formatLotNumber, formatDateTime } from "../utils/format";
@@ -57,7 +58,9 @@ export default function AuctionDetail() {
     return auction?.endTime;
   }, [auction]);
 
-  const countdown = useCountdown(endTime);
+  // 2. Updated hook call parameters to capture statusLabel and formatted values
+  const countdown = useCountdown(auction?.startTime, endTime);
+  
   const currentBid = bidState?.currentHighestBid ?? auction?.currentHighestBid ?? auction?.startingPrice;
   const minNext = currentBid != null && auction ? Number(currentBid) + Number(auction.minimumIncrement) : null;
 
@@ -115,7 +118,7 @@ export default function AuctionDetail() {
     return <div className="max-w-5xl mx-auto px-6 py-16 font-body text-auction-red">Lot not found.</div>;
   }
 
-  const isBidder = user?.role === "ROLE_BIDDER";
+  const isBidder = user?.role === "BIDDER";
   const canBid = isBidder && auction.status === "ACTIVE" && (!requiresRegistration(auction) || registration?.approved);
 
   return (
@@ -170,6 +173,7 @@ export default function AuctionDetail() {
             )}
           </div>
 
+          {/* 3. The countdown block is cleaner when handled in its sub-component below */}
           <Countdown countdown={countdown} />
 
           {auction.status === "ACTIVE" && isAuthenticated && isBidder && (
@@ -270,20 +274,24 @@ function ConnectionDot({ connected }) {
   );
 }
 
+// 4. Updated Countdown Sub-component to implement dynamic labels and safe text padding 
 function Countdown({ countdown }) {
-  if (countdown.expired) {
+  if (countdown.phase === "CLOSED" || countdown.expired) {
     return <div className="font-mono text-sm text-auction-red">Lot closed</div>;
   }
-  const parts = [
-    countdown.days > 0 && `${countdown.days}d`,
-    `${String(countdown.hours).padStart(2, "0")}h`,
-    `${String(countdown.minutes).padStart(2, "0")}m`,
-    `${String(countdown.seconds).padStart(2, "0")}s`,
-  ].filter(Boolean);
+
+  const pad = (num) => String(num || 0).padStart(2, "0");
+
   return (
     <div>
-      <div className="font-mono text-[11px] uppercase text-paper-dim tracking-wide">Time remaining</div>
-      <div className="font-mono text-2xl text-paper">{parts.join(" ")}</div>
+      {/* Dynamic hook header label */}
+      <div className="font-mono text-[11px] uppercase text-paper-dim tracking-wide">
+        {countdown.statusLabel || "Time remaining"}
+      </div>
+      {/* Main countdown digits display row */}
+      <div className="font-mono text-2xl text-paper">
+        {`${pad(countdown.hours)}h ${pad(countdown.minutes)}m ${pad(countdown.seconds)}s`}
+      </div>
     </div>
   );
 }

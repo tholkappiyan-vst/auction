@@ -4,8 +4,6 @@ import { useAuth } from "../context/AuthContext";
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
-  console.log("Navbar user:", user);
-  console.log("Navbar isAuthenticated:", isAuthenticated);
 
   return (
     <header className="border-b border-line bg-ink/95 backdrop-blur sticky top-0 z-40">
@@ -21,13 +19,13 @@ export default function Navbar() {
 
         <nav className="hidden md:flex items-center gap-6 font-body text-sm text-paper-dim">
           <Link to="/" className="hover:text-paper transition-colors">Catalog</Link>
-          {isAuthenticated && user?.role === "ROLE_AUCTIONEER" && (
+          {isAuthenticated && user?.role === "AUCTIONEER" && (
             <>
               <Link to="/my-auctions" className="hover:text-paper transition-colors">My Lots</Link>
               <Link to="/create-auction" className="hover:text-paper transition-colors">New Lot</Link>
             </>
           )}
-          {isAuthenticated && user?.role === "ROLE_BIDDER" && (
+          {isAuthenticated && user?.role === "BIDDER" && (
             <Link to="/my-registrations" className="hover:text-paper transition-colors">My Registrations</Link>
           )}
         </nav>

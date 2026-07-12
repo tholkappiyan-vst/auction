@@ -1,5 +1,6 @@
 package com.example.aution.service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -87,13 +88,13 @@ public class BidderService {
         }
 
         // Rule 2: Must register at least 5 minutes before startTime
-        LocalDateTime cutoff = auction.getStartTime().minusMinutes(5);
-        if (LocalDateTime.now().isAfter(cutoff)) {
-            throw new AuctionRegistrationNotAllowedException(
-                "Registration closed. You must register at least 5 minutes " +
-                "before the auction starts (" + auction.getStartTime() + ")"
-            );
-        }
+      LocalDateTime cutoff = auction.getStartTime().minusMinutes(5);
+if (LocalDateTime.now(Clock.systemUTC()).isAfter(cutoff)) {
+    throw new AuctionRegistrationNotAllowedException(
+        "Registration closed. You must register at least 5 minutes " +
+        "before the auction starts (" + auction.getStartTime() + ")"
+    );
+}
 
         // Rule 3: Duplicate registration guard
         if (registrationRepository.existsByAuctionAndBidder(auction, bidder)) {

@@ -15,18 +15,22 @@ const initialForm = {
   startingPrice: "",
   reservePrice: "",
   minimumIncrement: "",
+  certifiedAuthentic: false,
   enableAutoExtension: false,
   extensionWindowMinutes: 2,
   extensionDurationMinutes: 5,
-  certifiedAuthentic: false,
-  certificateNumber: "",
-  provenance: "",
 };
 
-function formatToLocalDateTime(dateString) {
-  if (!dateString) return "";
-  // If the input gives "2026-07-11T11:25", this appends ":00" to make it "2026-07-11T11:25:00"
-  return dateString.length === 16 ? `${dateString}:00` : dateString;
+// Backend DTO fields are primitives (boolean/double/int), so Jackson rejects
+// an explicit JSON `null` for them. Any optional field that isn't a real
+// value gets dropped from the payload entirely instead of being sent as null.
+function stripNullish(obj) {
+  const clean = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === null || value === undefined || value === "") continue;
+    clean[key] = value;
+  }
+  return clean;
 }
 
 export default function CreateAuction() {
@@ -44,16 +48,32 @@ export default function CreateAuction() {
     setError("");
     setBusy(true);
     try {
+      const optional = stripNullish({
+        itemImageUrl: form.itemImageUrl,
+        reservePrice: form.reservePrice ? Number(form.reservePrice) : undefined,
+        extensionWindowMinutes: form.enableAutoExtension
+          ? Number(form.extensionWindowMinutes)
+          : undefined,
+        extensionDurationMinutes: form.enableAutoExtension
+          ? Number(form.extensionDurationMinutes)
+          : undefined,
+      });
+
       const payload = {
-        ...form,
+        itemName: form.itemName,
+        itemDescription: form.itemDescription,
+        itemCategory: form.itemCategory,
+        itemCondition: form.itemCondition,
         estimatedValue: Number(form.estimatedValue),
         startingPrice: Number(form.startingPrice),
-        reservePrice: form.reservePrice ? Number(form.reservePrice) : undefined,
         minimumIncrement: Number(form.minimumIncrement),
-        extensionWindowMinutes: Number(form.extensionWindowMinutes),
-        extensionDurationMinutes: Number(form.extensionDurationMinutes),
-        startTime: formatToLocalDateTime(form.startTime),
-        endTime: formatToLocalDateTime(form.endTime),
+        startTime: new Date(form.startTime).toISOString(),
+        endTime: new Date(form.endTime).toISOString(),
+        // Always real booleans -- never null/undefined -- since the backend
+        // maps these onto primitive `boolean` fields.
+        certifiedAuthentic: Boolean(form.certifiedAuthentic),
+        enableAutoExtension: Boolean(form.enableAutoExtension),
+        ...optional,
       };
       const res = await createAuction(payload);
       navigate(`/auctions/${res.auctionId}`);
@@ -97,7 +117,7 @@ export default function CreateAuction() {
         </div>
 
         <Field label="Image URL">
-          <input value={form.itemImageUrl?.trim()} onChange={(e) => update("itemImageUrl", e.target.value)} className="input" placeholder="https://…" />
+          <input value={form.itemImageUrl} onChange={(e) => update("itemImageUrl", e.target.value)} className="input" placeholder="https://…" />
         </Field>
 
         <div className="grid grid-cols-2 gap-4">
@@ -128,16 +148,6 @@ export default function CreateAuction() {
         <label className="flex items-center gap-2 font-body text-sm text-paper-dim mt-2">
           <input
             type="checkbox"
-            checked={form.enableAutoExtension}
-            onChange={(e) => update("enableAutoExtension", e.target.checked)}
-            className="accent-brass"
-          />
-          Enable anti-sniper auto-extension
-        </label>
-
-        <label className="flex items-center gap-2 font-body text-sm text-paper-dim mt-2">
-          <input
-            type="checkbox"
             checked={form.certifiedAuthentic}
             onChange={(e) => update("certifiedAuthentic", e.target.checked)}
             className="accent-brass"
@@ -145,16 +155,15 @@ export default function CreateAuction() {
           Certified authentic
         </label>
 
-        {form.certifiedAuthentic && (
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Certificate number">
-              <input value={form.certificateNumber} onChange={(e) => update("certificateNumber", e.target.value)} className="input" />
-            </Field>
-            <Field label="Provenance">
-              <input value={form.provenance} onChange={(e) => update("provenance", e.target.value)} className="input" />
-            </Field>
-          </div>
-        )}
+        <label className="flex items-center gap-2 font-body text-sm text-paper-dim">
+          <input
+            type="checkbox"
+            checked={form.enableAutoExtension}
+            onChange={(e) => update("enableAutoExtension", e.target.checked)}
+            className="accent-brass"
+          />
+          Enable anti-sniper auto-extension
+        </label>
 
         {form.enableAutoExtension && (
           <div className="grid grid-cols-2 gap-4">

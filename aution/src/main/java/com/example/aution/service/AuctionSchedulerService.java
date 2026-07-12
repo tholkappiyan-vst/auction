@@ -1,16 +1,19 @@
 package com.example.aution.service;
 
-import com.example.aution.entity.AuctionDetailsEntity;
-import com.example.aution.entity.AuctionStatus;
-import com.example.aution.repository.AuctionRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import com.example.aution.entity.AuctionDetailsEntity;
+import com.example.aution.entity.AuctionStatus;
+import com.example.aution.repository.AuctionRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * AuctionSchedulerService runs two @Scheduled jobs:
@@ -34,10 +37,10 @@ public class AuctionSchedulerService {
 
     @Scheduled(fixedDelay = 30000)
     @Transactional
-    public void startScheduledAuctions() {
-        List<AuctionDetailsEntity> toStart = auctionRepository
-                .findByStatusAndStartTimeBefore(
-                        AuctionStatus.SCHEDULED, LocalDateTime.now());
+   public void startScheduledAuctions() {
+    List<AuctionDetailsEntity> toStart = auctionRepository
+            .findByStatusAndStartTimeBefore(
+                  AuctionStatus.SCHEDULED, LocalDateTime.now(Clock.systemUTC()));
 
         if (toStart.isEmpty()) return;
 
@@ -59,10 +62,10 @@ public class AuctionSchedulerService {
 
     @Scheduled(fixedDelay = 30000)
     @Transactional
-    public void completeExpiredAuctions() {
-        List<AuctionDetailsEntity> toComplete = auctionRepository
-                .findByStatusAndEndTimeBefore(
-                        AuctionStatus.ACTIVE, LocalDateTime.now());
+   public void completeExpiredAuctions() {
+    List<AuctionDetailsEntity> toComplete = auctionRepository
+            .findByStatusAndEndTimeBefore(
+                    AuctionStatus.ACTIVE, LocalDateTime.now(Clock.systemUTC()));
 
         if (toComplete.isEmpty()) return;
 

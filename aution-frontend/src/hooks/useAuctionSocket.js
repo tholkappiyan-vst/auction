@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import { getToken } from "../api/client";
 
@@ -6,8 +6,6 @@ const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || "ws://localhost:8080";
 
 /**
  * Subscribes to /topic/auction/{auctionId} for live BidUpdateMessage pushes.
- * Falls back gracefully if the socket can't connect -- callers should still
- * poll GET /bids/{auctionId}/current once on mount for the initial state.
  */
 export function useAuctionSocket(auctionId) {
   const [connected, setConnected] = useState(false);

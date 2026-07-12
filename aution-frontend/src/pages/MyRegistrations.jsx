@@ -13,9 +13,21 @@ export default function MyRegistrations() {
   }
   useEffect(load, []);
 
-  async function handleUnregister(auctionId) {
-    await unregisterFromAuction(auctionId);
-    load();
+  // FIXED: Added error handling and user confirmation alert
+  async function handleUnregister(auctionId, itemName) {
+    if (!window.confirm(`Are you sure you want to unregister from "${itemName}"?`)) {
+      return;
+    }
+
+    try {
+      await unregisterFromAuction(auctionId);
+      alert("Successfully unregistered!");
+      load(); // Refresh the list from the server
+    } catch (error) {
+      console.error("Unregister failed:", error);
+      // Alerts the real backend error (e.g. "Cannot unregister from an active auction")
+      alert(error.response?.data?.message || "Failed to unregister. The auction may have already started.");
+    }
   }
 
   return (
@@ -33,24 +45,38 @@ export default function MyRegistrations() {
       )}
 
       <ul className="flex flex-col gap-3">
-        {regs.map((r) => (
-          <li key={r.registrationId} className="border border-line rounded-lg p-4 flex items-center justify-between bg-ink-soft">
-            <div>
-              <Link to={`/auctions/${r.auctionId}`} className="font-display text-lg text-paper hover:text-brass-bright transition-colors">
-                {r.itemName}
-              </Link>
-              <div className="font-mono text-xs text-paper-dim mt-1">
-                {r.auctioneerCompany} · Starts {formatDateTime(r.auctionStartTime)}
+        {regs.map((r) => {
+          // DYNAMIC CHECK: Hide button if the current system time is past the start time
+          const now = Date.now();
+          const startTimeMs = r.auctionStartTime ? new Date(r.auctionStartTime).getTime() : 0;
+          const hasStarted = now >= startTimeMs;
+
+          return (
+            <li key={r.registrationId} className="border border-line rounded-lg p-4 flex items-center justify-between bg-ink-soft">
+              <div>
+                <Link to={`/auctions/${r.auctionId}`} className="font-display text-lg text-paper hover:text-brass-bright transition-colors">
+                  {r.itemName}
+                </Link>
+                <div className="font-mono text-xs text-paper-dim mt-1">
+                  {r.auctioneerCompany} · Starts {formatDateTime(r.auctionStartTime)}
+                </div>
+                <div className={`font-mono text-[10px] uppercase mt-1 ${r.approved ? "text-ledger-bright" : "text-brass-bright"}`}>
+                  {r.approved ? "Approved" : "Pending approval"}
+                </div>
               </div>
-              <div className={`font-mono text-[10px] uppercase mt-1 ${r.approved ? "text-ledger-bright" : "text-brass-bright"}`}>
-                {r.approved ? "Approved" : "Pending approval"}
-              </div>
-            </div>
-            <button onClick={() => handleUnregister(r.auctionId)} className="btn-secondary text-xs">
-              Unregister
-            </button>
-          </li>
-        ))}
+
+              {/* DYNAMIC HIDING: Only show the button if the auction HAS NOT started yet */}
+              {!hasStarted && (
+                <button 
+                  onClick={() => handleUnregister(r.auctionId, r.itemName)} 
+                  className="btn-secondary text-xs"
+                >
+                  Unregister
+                </button>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

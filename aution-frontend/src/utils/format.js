@@ -1,3 +1,5 @@
+import { parseServerDate } from "./datetime";
+
 export function formatCurrency(amount) {
   if (amount == null) return "—";
   return new Intl.NumberFormat("en-IN", {
@@ -13,7 +15,7 @@ export function formatLotNumber(id) {
 
 export function formatDateTime(iso) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString("en-IN", {
+  return parseServerDate(iso).toLocaleString("en-IN", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",

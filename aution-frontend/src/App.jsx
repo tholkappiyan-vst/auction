@@ -23,7 +23,7 @@ export default function App() {
           <Route
             path="/create-auction"
             element={
-              <ProtectedRoute role="ROLE_AUCTIONEER">
+              <ProtectedRoute role="AUCTIONEER">
                 <CreateAuction />
               </ProtectedRoute>
             }
@@ -31,7 +31,7 @@ export default function App() {
           <Route
             path="/my-auctions"
             element={
-              <ProtectedRoute role="ROLE_AUCTIONEER">
+              <ProtectedRoute role="AUCTIONEER">
                 <MyAuctions />
               </ProtectedRoute>
             }
@@ -39,7 +39,7 @@ export default function App() {
           <Route
             path="/my-registrations"
             element={
-              <ProtectedRoute role="ROLE_BIDDER">
+              <ProtectedRoute role="BIDDER">
                 <MyRegistrations />
               </ProtectedRoute>
             }
