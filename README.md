@@ -1,4 +1,5 @@
-# Auction Platform 
+# Auction Platform  auction-coral-five.vercel.app
+
 
 A full-stack, real-time auction platform engineered to handle high-frequency bidding — thousands of bids in the final seconds of an auction — without row locking or storage-layer crashes.
 
@@ -133,6 +134,4 @@ npm run dev
 - Repository was renamed from `aution` to `auction`; backend code lives in a subfolder within the repo.
 - Rotate any credentials that were shared in plaintext during debugging sessions.
 
-## License
 
-> Add a license if this project is going to be public.
