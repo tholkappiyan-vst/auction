@@ -1,4 +1,4 @@
-# Auction Platform  auction-coral-five.vercel.app
+# Auction Platform  [live demo](https://auction-coral-five.vercel.app)
 
 
 A full-stack, real-time auction platform engineered to handle high-frequency bidding — thousands of bids in the final seconds of an auction — without row locking or storage-layer crashes.
